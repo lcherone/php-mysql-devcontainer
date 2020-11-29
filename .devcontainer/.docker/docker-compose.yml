@@ -16,8 +16,8 @@ services:
       - 8080:80
     volumes:
       - ../../:/var/www/html
-      - ~/.ssh:/root/.ssh
-      - ~/.gitconfig:/root/.gitconfig
+      #- ~/.ssh:/root/.ssh
+      #- ~/.gitconfig:/root/.gitconfig
     environment:
       APP_WEBROOT: /var/www/html
       DB_ROOTPASS: 123456
