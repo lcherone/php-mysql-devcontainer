@@ -1,54 +1,54 @@
-FROM debian:buster-slim
+FROM debian:bookworm-slim
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Configure apt and install packages
+# Configure apt and install required packages
 RUN apt-get update \
-    && apt-get -y install --no-install-recommends apt-utils 2>&1 \
-    && apt-get -y install --no-install-recommends apt-transport-https 2>&1 \
+    && apt-get -y install --no-install-recommends \
+       apt-transport-https \
+       apt-utils \
+       build-essential \
+       ca-certificates \
+       curl \
+       git \
+       gnupg2 \
+       htop \
+       iftop \
+       locales \
+       lsb-release \
+       mariadb-client \
+       nano \
+       net-tools \
+       procps \
+       unzip \
+       wget \
     #
-    # Verify git and common are installed
-    && apt-get -y install locales ca-certificates build-essential wget curl unzip lsb-release git procps net-tools nano htop iftop \
+    # Add Sury repository and install PHP
+    && curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/sury-php.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" | tee /etc/apt/sources.list.d/php.list \
+    && apt-get update \
+    && apt-get install -y php8.3 php8.3-cli php8.3-common php8.3-curl \
+       php8.3-intl php8.3-mbstring php8.3-mysql php8.3-opcache \
+       php8.3-readline php8.3-xml php8.3-zip supervisor \
     #
-    # mySQL client
-    && apt-get install -y mariadb-client \
-    #
-    # Install PHP
-    && echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | tee -a /etc/apt/sources.list.d/php.list \
-    && curl https://packages.sury.org/php/apt.gpg | apt-key add - \
-    && apt-get update -qq \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y php7.3 php7.3-common \
-    php7.3-cli php7.3-json php7.3-mysql php7.3-opcache php7.3-readline \
-    php7.3-curl php7.3-xml php7.3-mbstring php7.3-intl php7.3-zip \
-    supervisor \
-    #
-    # Install apache2 
-    && apt-get -y install apache2 libapache2-mod-php7.3 && a2enmod headers && a2enmod rewrite \
-    && awk '/<Directory \/var\/www\/>/,/AllowOverride None/{sub("None", "All",$0)}{print}' /etc/apache2/apache2.conf > tmp.conf && mv tmp.conf /etc/apache2/apache2.conf 2>&1 \
-    && apache2ctl -D BACKGROUND \
-    && update-rc.d apache2 defaults \
+    # Install Apache2 and enable required modules
+    && apt-get -y install apache2 libapache2-mod-php8.3 \
+    && a2enmod headers rewrite \
+    && sed -i 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf \
     #
     # Reconfigure locales
-    && DEBIAN_FRONTEND=noninteractive LANGUAGE=en_US.UTF-8 LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 && locale-gen en_US.UTF-8 && dpkg-reconfigure locales \
+    && locale-gen en_US.UTF-8 && dpkg-reconfigure --frontend=noninteractive locales \
     #
     # Clean up
     && apt-get autoremove -y && apt-get autoclean -y && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Switch back to dialog for any ad-hoc use of apt-get
+# Set environment variables
 ENV DEBIAN_FRONTEND=dialog
-
-# Create volumn link to current directory
+ENV TZ=UTC
 VOLUME /var/www/html
 
-# Set environment vars
-ENV TZ UTC
-
+# Copy entrypoint script
 COPY entrypoint.sh /
-
-#
 ENTRYPOINT ["/entrypoint.sh"]
-
-# comment out if you dont want to use .devcontainer.json
-#CMD npm run dev
